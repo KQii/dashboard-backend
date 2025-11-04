@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from "axios";
+import { v4 as uuidv4 } from "uuid";
 import { CustomError } from "../middleware/errorHandler";
 import { getGaugeResponse } from "../utils/callApiFormatGaugeResponse";
 
@@ -224,12 +225,31 @@ class PrometheusService {
           duration: r.duration,
           severity: r.labels.severity,
           annotations: r.annotations,
-          alerts: r.alerts,
+          alerts: r.alerts.map((alert: any) => ({
+            id: uuidv4(),
+            ...alert,
+          })),
           lastEvaluation: r.lastEvaluation,
         }))
       );
 
       return rules;
+    } catch (error: any) {
+      throw new CustomError(
+        `Failed to fetch rules: ${error.message}`,
+        error.response?.status || 500
+      );
+    }
+  }
+
+  async getRuleGroups(): Promise<any> {
+    try {
+      const response = await this.client.get("/api/v1/rules");
+      const groups = Array.from(
+        new Set(response.data.data.groups.map((g: any) => g.name))
+      );
+
+      return groups;
     } catch (error: any) {
       throw new CustomError(
         `Failed to fetch rules: ${error.message}`,

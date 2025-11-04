@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
 import prometheusService from "../services/prometheus.service";
+import { APIFeatures } from "../utils/apiFeatures";
 
 export const getClusterMetrics = asyncHandler(
   async (req: Request, res: Response) => {
@@ -73,6 +74,39 @@ export const query = asyncHandler(async (req: Request, res: Response) => {
   return res.json({ success: true, data: result });
 });
 
+export const getRulesProcessed = asyncHandler(
+  async (req: Request, res: Response) => {
+    const allRules = await prometheusService.getRulesProcessed();
+
+    // Apply filtering, sorting, field limiting, and pagination
+    const features = new APIFeatures(allRules, req.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+
+    const rules = features.data;
+    const metadata = features.getMetadata();
+
+    return res.json({
+      success: true,
+      data: rules,
+      pagination: metadata,
+    });
+  }
+);
+
+export const getRuleGroups = asyncHandler(
+  async (req: Request, res: Response) => {
+    const groups = await prometheusService.getRuleGroups();
+
+    return res.json({
+      success: true,
+      data: groups,
+    });
+  }
+);
+
 /**
  * Execute a range query
  */
@@ -95,13 +129,6 @@ export const queryRange = asyncHandler(async (req: Request, res: Response) => {
 
   return res.json({ success: true, data: result });
 });
-
-export const getRulesProcessed = asyncHandler(
-  async (req: Request, res: Response) => {
-    const rules = await prometheusService.getRulesProcessed();
-    return res.json({ success: true, data: rules });
-  }
-);
 
 // Raw controller
 /**

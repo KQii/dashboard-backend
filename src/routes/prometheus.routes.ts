@@ -7,6 +7,7 @@ router.get("/cluster-metrics", prometheusController.getClusterMetrics);
 router.get("/cpu-metrics", prometheusController.getCPUMetrics);
 router.get("/jvm-metrics", prometheusController.getJVMMetrics);
 router.get("/rules", prometheusController.getRulesProcessed);
+router.get("/rule-groups", prometheusController.getRuleGroups);
 
 const rawRouter = Router();
 
