@@ -9,11 +9,11 @@ interface QueryString {
 export class APIFeatures<T> {
   public data: T[];
   private queryString: QueryString;
-  private originalData: T[];
+  private filteredData: T[];
 
   constructor(data: T[], queryString: QueryString) {
     this.data = data;
-    this.originalData = [...data];
+    this.filteredData = [...data];
     this.queryString = queryString;
   }
 
@@ -47,7 +47,22 @@ export class APIFeatures<T> {
             if (lteMatch) return itemValue <= parseFloat(lteMatch[1]);
             if (ltMatch) return itemValue < parseFloat(ltMatch[1]);
 
-            // String contains (case-insensitive partial match)
+            // Handle multiple values (OR condition) - comma-separated
+            if (value.includes(",")) {
+              const values = value.split(",").map((v) => v.trim());
+
+              // For strings, check if itemValue contains any of the values
+              if (typeof itemValue === "string") {
+                return values.some((val) =>
+                  itemValue.toLowerCase().includes(val.toLowerCase())
+                );
+              }
+
+              // For non-strings, check exact match with any value
+              return values.some((val) => itemValue == val);
+            }
+
+            // Single value - String contains (case-insensitive partial match)
             if (typeof itemValue === "string") {
               return itemValue.toLowerCase().includes(value.toLowerCase());
             }
@@ -109,6 +124,9 @@ export class APIFeatures<T> {
     const limit = Number(this.queryString.limit) || 100;
     const skip = (page - 1) * limit;
 
+    // Save filtered data count before pagination
+    this.filteredData = [...this.data];
+
     this.data = this.data.slice(skip, skip + limit);
 
     return this;
@@ -117,7 +135,7 @@ export class APIFeatures<T> {
   getMetadata() {
     const page = Number(this.queryString.page) || 1;
     const limit = Number(this.queryString.limit) || 100;
-    const total = this.originalData.length;
+    const total = this.filteredData.length; // Use filtered count
     const totalPages = Math.ceil(total / limit);
 
     return {
