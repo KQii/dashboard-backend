@@ -98,11 +98,21 @@ export const getRulesProcessed = asyncHandler(
 
 export const getRuleGroups = asyncHandler(
   async (req: Request, res: Response) => {
-    const groups = await prometheusService.getRuleGroups();
+    const allGroups = await prometheusService.getRuleGroups();
+
+    const features = new APIFeatures(allGroups, req.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+
+    const groups = features.data;
+    const metadata = features.getMetadata();
 
     return res.json({
       success: true,
       data: groups,
+      pagination: metadata,
     });
   }
 );
