@@ -1,16 +1,36 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
+import { APIFeatures } from "../utils/apiFeatures";
 import alertmanagerService from "../services/alertmanager.service";
 
 /**
  * Get all alerts
  */
 export const getAlerts = asyncHandler(async (req: Request, res: Response) => {
-  const { filter } = req.query;
-  const alerts = await alertmanagerService.getAlerts(
-    filter as string | undefined
-  );
-  return res.json({ success: true, data: alerts });
+  const allAlerts = await alertmanagerService.getAlerts();
+
+  const features = new APIFeatures(allAlerts, req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .paginate();
+
+  const alerts = features.data;
+  const metadata = features.getMetadata();
+
+  return res.json({ success: true, data: alerts, pagination: metadata });
+});
+
+export const getAlertLabels = asyncHandler(
+  async (req: Request, res: Response) => {
+    const labels = await alertmanagerService.getAlertLabels();
+    return res.json({ success: true, data: labels });
+  }
+);
+
+export const getChannels = asyncHandler(async (req: Request, res: Response) => {
+  const silences = await alertmanagerService.getChannels();
+  return res.json({ success: true, data: silences });
 });
 
 /**
@@ -47,11 +67,18 @@ export const postAlerts = asyncHandler(async (req: Request, res: Response) => {
  * Get all silences
  */
 export const getSilences = asyncHandler(async (req: Request, res: Response) => {
-  const { filter } = req.query;
-  const silences = await alertmanagerService.getSilences(
-    filter as string | undefined
-  );
-  return res.json({ success: true, data: silences });
+  const allSilences = await alertmanagerService.getSilences();
+
+  const features = new APIFeatures(allSilences, req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .paginate();
+
+  const silences = features.data;
+  const metadata = features.getMetadata();
+
+  return res.json({ success: true, data: silences, pagination: metadata });
 });
 
 /**
@@ -125,3 +152,10 @@ export const checkHealth = asyncHandler(async (req: Request, res: Response) => {
   const health = await alertmanagerService.checkHealth();
   return res.json({ success: true, data: health });
 });
+
+export const reloadConfig = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await alertmanagerService.reloadConfig();
+    return res.json({ success: true, data: result });
+  }
+);

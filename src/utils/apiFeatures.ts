@@ -34,47 +34,78 @@ export class APIFeatures<T> {
             return false;
           }
 
-          // Handle comparison operators
-          if (typeof value === "string") {
-            // Handle gte, gt, lte, lt operators
-            const gteMatch = value.match(/^gte:(.+)$/);
-            const gtMatch = value.match(/^gt:(.+)$/);
-            const lteMatch = value.match(/^lte:(.+)$/);
-            const ltMatch = value.match(/^lt:(.+)$/);
-
-            if (gteMatch) return itemValue >= parseFloat(gteMatch[1]);
-            if (gtMatch) return itemValue > parseFloat(gtMatch[1]);
-            if (lteMatch) return itemValue <= parseFloat(lteMatch[1]);
-            if (ltMatch) return itemValue < parseFloat(ltMatch[1]);
-
-            // Handle multiple values (OR condition) - comma-separated
-            if (value.includes(",")) {
-              const values = value.split(",").map((v) => v.trim());
-
-              // For strings, check if itemValue contains any of the values
-              if (typeof itemValue === "string") {
-                return values.some((val) =>
-                  itemValue.toLowerCase().includes(val.toLowerCase())
-                );
-              }
-
-              // For non-strings, check exact match with any value
-              return values.some((val) => itemValue == val);
-            }
-
-            // Single value - String contains (case-insensitive partial match)
-            if (typeof itemValue === "string") {
-              return itemValue.toLowerCase().includes(value.toLowerCase());
-            }
+          // Handle array of values (multiple query params with same key)
+          if (Array.isArray(value)) {
+            // Each condition in the array must pass (AND logic for ranges)
+            return value.every((val) => this.evaluateCondition(itemValue, val));
           }
 
-          // Direct equality check for non-string values
-          return itemValue === value || itemValue == value;
+          // Handle single value
+          return this.evaluateCondition(itemValue, value);
         });
       });
     }
 
     return this;
+  }
+
+  private evaluateCondition(itemValue: any, value: any): boolean {
+    // Handle comparison operators
+    if (typeof value === "string") {
+      // Handle gte, gt, lte, lt operators
+      const gteMatch = value.match(/^gte:(.+)$/);
+      const gtMatch = value.match(/^gt:(.+)$/);
+      const lteMatch = value.match(/^lte:(.+)$/);
+      const ltMatch = value.match(/^lt:(.+)$/);
+
+      if (gteMatch || gtMatch || lteMatch || ltMatch) {
+        const operatorValue = (gteMatch || gtMatch || lteMatch || ltMatch)![1];
+
+        // Try to parse as date first (ISO string)
+        const operatorDate = new Date(operatorValue);
+        const itemDate = new Date(itemValue as string);
+
+        if (!isNaN(operatorDate.getTime()) && !isNaN(itemDate.getTime())) {
+          // Both are valid dates - compare as dates
+          if (gteMatch) return itemDate.getTime() >= operatorDate.getTime();
+          if (gtMatch) return itemDate.getTime() > operatorDate.getTime();
+          if (lteMatch) return itemDate.getTime() <= operatorDate.getTime();
+          if (ltMatch) return itemDate.getTime() < operatorDate.getTime();
+        } else {
+          // Not dates - compare as numbers
+          const numValue = parseFloat(operatorValue);
+          if (!isNaN(numValue)) {
+            if (gteMatch) return itemValue >= numValue;
+            if (gtMatch) return itemValue > numValue;
+            if (lteMatch) return itemValue <= numValue;
+            if (ltMatch) return itemValue < numValue;
+          }
+        }
+      }
+
+      // Handle multiple values (OR condition) - comma-separated
+      if (value.includes(",")) {
+        const values = value.split(",").map((v) => v.trim());
+
+        // For strings, check if itemValue contains any of the values
+        if (typeof itemValue === "string") {
+          return values.some((val) =>
+            itemValue.toLowerCase().includes(val.toLowerCase())
+          );
+        }
+
+        // For non-strings, check exact match with any value
+        return values.some((val) => itemValue == val);
+      }
+
+      // Single value - String contains (case-insensitive partial match)
+      if (typeof itemValue === "string") {
+        return itemValue.toLowerCase().includes(value.toLowerCase());
+      }
+    }
+
+    // Direct equality check for non-string values
+    return itemValue === value || itemValue == value;
   }
 
   sort(): this {

@@ -8,6 +8,11 @@ router.get("/alerts", alertmanagerController.getAlerts);
 router.get("/alerts/groups", alertmanagerController.getAlertGroups);
 router.post("/alerts", alertmanagerController.postAlerts);
 
+router.get("/alert-labels", alertmanagerController.getAlertLabels);
+
+// Channel endpoints
+router.get("/channels", alertmanagerController.getChannels);
+
 // Silence endpoints
 router.get("/silences", alertmanagerController.getSilences);
 router.get("/silence/:id", alertmanagerController.getSilence);
@@ -20,5 +25,8 @@ router.get("/status", alertmanagerController.getStatus);
 
 // Health check
 router.get("/health", alertmanagerController.checkHealth);
+
+// Reload config
+router.post("/reload", alertmanagerController.reloadConfig);
 
 export default router;

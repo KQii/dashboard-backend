@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from "axios";
+import yaml from "js-yaml";
 import { CustomError } from "../middleware/errorHandler";
 
 export interface Alert {
@@ -43,28 +44,91 @@ class AlertmanagerService {
   /**
    * Get all alerts
    */
-  async getAlerts(filter?: string): Promise<any[]> {
+  async getAlerts(): Promise<any[]> {
     try {
-      const params = filter ? { filter } : {};
-      const response = await this.client.get("/api/v2/alerts", { params });
+      const response = await this.client.get("/api/v2/alerts");
       const alerts = response.data.map((a: any) => ({
         id: a.fingerprint,
         name: a.labels.alertname,
         severity: a.labels.severity,
+        state: a.status.state,
         status: a.status,
-        description: a.annotations.description,
-        labels: {
-          cluster: a.labels.cluster,
-          alertname: a.labels.alertname,
-          instance: a.labels.instance,
-        },
+        annotations: a.annotations,
+        labels: a.labels,
+        receivers: a.receivers,
         startsAt: a.startsAt,
+        endsAt: a.endsAt,
+        updatedAt: a.updatedAt,
       }));
 
       return alerts;
     } catch (error: any) {
       throw new CustomError(
         `Failed to fetch alerts: ${error.message}`,
+        error.response?.status || 500
+      );
+    }
+  }
+
+  async getAlertLabels(): Promise<any[]> {
+    try {
+      const response = await this.client.get("/api/v2/alerts");
+      const labels = response.data.map((a: any) => ({
+        labels: a.labels,
+      }));
+
+      const mergedLabels = labels.reduce((acc: any, label: any) => {
+        Object.entries(label.labels).forEach(([key, value]) => {
+          // Nếu key chưa có, khởi tạo mảng
+          if (!acc[key]) {
+            acc[key] = [value];
+          }
+          // Nếu key có rồi nhưng chưa có giá trị này thì thêm vào
+          else if (!acc[key].includes(value)) {
+            acc[key].push(value);
+          }
+        });
+        return acc;
+      }, {});
+
+      return mergedLabels;
+    } catch (error: any) {
+      throw new CustomError(
+        `Failed to fetch alerts: ${error.message}`,
+        error.response?.status || 500
+      );
+    }
+  }
+
+  async getChannels(): Promise<any[]> {
+    try {
+      const response = await this.client.get("/api/v2/status");
+      const parsed: any = yaml.load(response.data?.config.original);
+      // const channel = Object.keys(parsed.receivers[0])
+      //   .slice(1)
+      //   .map((c) => c.replace(/_config(s)?$/, ""));
+      const receiver = parsed.receivers[0];
+
+      const mapSendTo = {
+        email: "to",
+        slack: "channel",
+      };
+
+      const result = Object.entries(mapSendTo)
+        .filter(([type]) => receiver[`${type}_configs`])
+        .map(([type, key]) => {
+          const config = receiver[`${type}_configs`][0];
+          return {
+            id: type,
+            type,
+            sendTo: config[key],
+          };
+        });
+
+      return result;
+    } catch (error: any) {
+      throw new CustomError(
+        `Failed to fetch status: ${error.message}`,
         error.response?.status || 500
       );
     }
@@ -105,11 +169,16 @@ class AlertmanagerService {
   /**
    * Get all silences
    */
-  async getSilences(filter?: string): Promise<any[]> {
+  async getSilences(): Promise<any[]> {
     try {
-      const params = filter ? { filter } : {};
-      const response = await this.client.get("/api/v2/silences", { params });
-      return response.data;
+      const response = await this.client.get("/api/v2/silences");
+
+      const silences = response.data.map((s: any) => ({
+        ...s,
+        state: s.status.state,
+      }));
+
+      return silences;
     } catch (error: any) {
       throw new CustomError(
         `Failed to fetch silences: ${error.message}`,
@@ -202,6 +271,18 @@ class AlertmanagerService {
     } catch (error: any) {
       throw new CustomError(
         `Alertmanager health check failed: ${error.message}`,
+        error.response?.status || 500
+      );
+    }
+  }
+
+  async reloadConfig(): Promise<any> {
+    try {
+      const response = await this.client.post("/-/reload");
+      return response.data;
+    } catch (error: any) {
+      throw new CustomError(
+        `Failed to create silence: ${error.message}`,
         error.response?.status || 500
       );
     }
