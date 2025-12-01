@@ -29,9 +29,25 @@ export const getAlertLabels = asyncHandler(
 );
 
 export const getChannels = asyncHandler(async (req: Request, res: Response) => {
-  const silences = await alertmanagerService.getChannels();
-  return res.json({ success: true, data: silences });
+  const channels = await alertmanagerService.getChannels();
+  return res.json({ success: true, data: channels });
 });
+
+export const selectChannels = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.body.channels) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing input channel",
+      });
+    }
+
+    await alertmanagerService.updateChannels(req.body.channels);
+    const channels = await alertmanagerService.getChannels();
+
+    return res.json({ success: true, data: channels });
+  }
+);
 
 /**
  * Get alert groups

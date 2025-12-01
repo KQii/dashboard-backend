@@ -12,6 +12,7 @@ router.get("/alert-labels", alertmanagerController.getAlertLabels);
 
 // Channel endpoints
 router.get("/channels", alertmanagerController.getChannels);
+router.post("/channels", alertmanagerController.selectChannels);
 
 // Silence endpoints
 router.get("/silences", alertmanagerController.getSilences);
