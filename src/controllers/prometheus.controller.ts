@@ -53,6 +53,90 @@ export const getJVMMetrics = asyncHandler(
   }
 );
 
+export const getIndexingThroughputMetrics = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { start, end, step } = req.query;
+
+    if (!start || !end || !step) {
+      return res.status(400).json({
+        success: false,
+        error: "start, end, and step parameters are required",
+      });
+    }
+
+    const result = await prometheusService.getIndexingThroughputMetrics(
+      start as string,
+      end as string,
+      step as string
+    );
+
+    return res.json({ success: true, data: result });
+  }
+);
+
+export const getIndexingAverageLatencyMetrics = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { start, end, step } = req.query;
+
+    if (!start || !end || !step) {
+      return res.status(400).json({
+        success: false,
+        error: "start, end, and step parameters are required",
+      });
+    }
+
+    const result = await prometheusService.getIndexingAverageLatencyMetrics(
+      start as string,
+      end as string,
+      step as string
+    );
+
+    return res.json({ success: true, data: result });
+  }
+);
+
+export const getSearchThroughputMetrics = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { start, end, step } = req.query;
+
+    if (!start || !end || !step) {
+      return res.status(400).json({
+        success: false,
+        error: "start, end, and step parameters are required",
+      });
+    }
+
+    const result = await prometheusService.getSearchThroughputMetrics(
+      start as string,
+      end as string,
+      step as string
+    );
+
+    return res.json({ success: true, data: result });
+  }
+);
+
+export const getSearchAverageLatencyMetrics = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { start, end, step } = req.query;
+
+    if (!start || !end || !step) {
+      return res.status(400).json({
+        success: false,
+        error: "start, end, and step parameters are required",
+      });
+    }
+
+    const result = await prometheusService.getSearchAverageLatencyMetrics(
+      start as string,
+      end as string,
+      step as string
+    );
+
+    return res.json({ success: true, data: result });
+  }
+);
+
 /**
  * Execute an instant query
  */

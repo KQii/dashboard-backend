@@ -6,6 +6,23 @@ const router = Router();
 router.get("/cluster-metrics", prometheusController.getClusterMetrics);
 router.get("/cpu-metrics", prometheusController.getCPUMetrics);
 router.get("/jvm-metrics", prometheusController.getJVMMetrics);
+router.get(
+  "/indexing-throughput-metrics",
+  prometheusController.getIndexingThroughputMetrics
+);
+router.get(
+  "/indexing-average-latency-metrics",
+  prometheusController.getIndexingAverageLatencyMetrics
+);
+router.get(
+  "/search-throughput-metrics",
+  prometheusController.getSearchThroughputMetrics
+);
+router.get(
+  "/search-average-latency-metrics",
+  prometheusController.getSearchAverageLatencyMetrics
+);
+
 router.get("/rules", prometheusController.getRulesProcessed);
 router.get("/rule-groups", prometheusController.getRuleGroups);
 

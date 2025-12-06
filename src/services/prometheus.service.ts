@@ -32,6 +32,11 @@ export interface CPUMetric {
   usage: number;
 }
 
+export interface IndexingThroughputMetric {
+  timestamp: string;
+  value: number;
+}
+
 export interface JVMMetric {
   timestamp: string;
   heapUsed: number;
@@ -44,8 +49,7 @@ class PrometheusService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl =
-      process.env.PROMETHEUS_URL || "http://localhost:9090/prometheus";
+    this.baseUrl = process.env.PROMETHEUS_URL || "http://localhost:9090";
     this.client = axios.create({
       baseURL: this.baseUrl,
       timeout: 10000,
@@ -206,7 +210,131 @@ class PrometheusService {
       return metric;
     } catch (error: any) {
       throw new CustomError(
-        `Failed to get CPU metrics: ${error.message}`,
+        `Failed to get JVM metrics: ${error.message}`,
+        error.response?.status || 500
+      );
+    }
+  }
+
+  async getIndexingThroughputMetrics(
+    start: string,
+    end: string,
+    step: string
+  ): Promise<IndexingThroughputMetric[]> {
+    try {
+      const params = {
+        query: `rate(elasticsearch_indices_indexing_index_total[${step}])`,
+        start: decodeURIComponent(start),
+        end: decodeURIComponent(end),
+        step,
+      };
+      const response = await this.client.get("/api/v1/query_range", { params });
+
+      const indexingThroughputMetrics: IndexingThroughputMetric[] =
+        response.data.data.result?.flatMap((node: any) =>
+          node.values.map(([timestamp, value]: any) => ({
+            timestamp: new Date(timestamp * 1000).toISOString(),
+            nodeName: node.metric.name,
+            value: parseFloat(value),
+          }))
+        );
+      return indexingThroughputMetrics;
+    } catch (error: any) {
+      throw new CustomError(
+        `Failed to get Indexing Throughput metrics: ${error.message}`,
+        error.response?.status || 500
+      );
+    }
+  }
+
+  async getIndexingAverageLatencyMetrics(
+    start: string,
+    end: string,
+    step: string
+  ): Promise<IndexingThroughputMetric[]> {
+    try {
+      const params = {
+        query: `rate(elasticsearch_indices_indexing_index_time_seconds_total[${step}])/rate(elasticsearch_indices_indexing_index_total[${step}])`,
+        start: decodeURIComponent(start),
+        end: decodeURIComponent(end),
+        step,
+      };
+      const response = await this.client.get("/api/v1/query_range", { params });
+
+      const indexingThroughputMetrics: IndexingThroughputMetric[] =
+        response.data.data.result?.flatMap((node: any) =>
+          node.values.map(([timestamp, value]: any) => ({
+            timestamp: new Date(timestamp * 1000).toISOString(),
+            nodeName: node.metric.name,
+            value: parseFloat(value),
+          }))
+        );
+      return indexingThroughputMetrics;
+    } catch (error: any) {
+      throw new CustomError(
+        `Failed to get Indexing Throughput metrics: ${error.message}`,
+        error.response?.status || 500
+      );
+    }
+  }
+
+  async getSearchThroughputMetrics(
+    start: string,
+    end: string,
+    step: string
+  ): Promise<IndexingThroughputMetric[]> {
+    try {
+      const params = {
+        query: `rate(elasticsearch_indices_search_query_total[${step}])`,
+        start: decodeURIComponent(start),
+        end: decodeURIComponent(end),
+        step,
+      };
+      const response = await this.client.get("/api/v1/query_range", { params });
+
+      const indexingThroughputMetrics: IndexingThroughputMetric[] =
+        response.data.data.result?.flatMap((node: any) =>
+          node.values.map(([timestamp, value]: any) => ({
+            timestamp: new Date(timestamp * 1000).toISOString(),
+            nodeName: node.metric.name,
+            value: parseFloat(value),
+          }))
+        );
+      return indexingThroughputMetrics;
+    } catch (error: any) {
+      throw new CustomError(
+        `Failed to get Indexing Throughput metrics: ${error.message}`,
+        error.response?.status || 500
+      );
+    }
+  }
+
+  async getSearchAverageLatencyMetrics(
+    start: string,
+    end: string,
+    step: string
+  ): Promise<IndexingThroughputMetric[]> {
+    try {
+      const params = {
+        query: `rate(elasticsearch_indices_search_query_time_seconds[${step}])/rate(elasticsearch_indices_search_query_total[${step}])`,
+        start: decodeURIComponent(start),
+        end: decodeURIComponent(end),
+        step,
+      };
+      const response = await this.client.get("/api/v1/query_range", { params });
+
+      const indexingThroughputMetrics: IndexingThroughputMetric[] =
+        response.data.data.result?.flatMap((node: any) =>
+          node.values.map(([timestamp, value]: any) => ({
+            timestamp: new Date(timestamp * 1000).toISOString(),
+            nodeName: node.metric.name,
+            value: parseFloat(value),
+          }))
+        );
+      return indexingThroughputMetrics;
+    } catch (error: any) {
+      throw new CustomError(
+        `Failed to get Indexing Throughput metrics: ${error.message}`,
         error.response?.status || 500
       );
     }
