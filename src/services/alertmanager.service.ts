@@ -36,6 +36,14 @@ export interface Matcher {
   isEqual?: boolean;
 }
 
+interface AlertmanagerRoute {
+  receiver: string;
+  continue: boolean;
+  match?: {
+    target: string;
+  };
+}
+
 export interface AlertmanagerConfig {
   global: { resolve_timeout: string };
   route: {
@@ -44,7 +52,7 @@ export interface AlertmanagerConfig {
     group_interval: string;
     repeat_interval: string;
     receiver: string;
-    routes: Array<{ receiver: string; continue: boolean }>;
+    routes: AlertmanagerRoute[];
   };
   inhibit_rules: Array<{
     source_match: { severity: string };
@@ -133,10 +141,12 @@ class AlertmanagerService {
       const response = await this.client.get("/api/v2/status");
       const parsed: any = yaml.load(response.data?.config.original);
 
-      const activeChannels = parsed.route.routes?.map((c: any) =>
-        c.receiver.replace("-receiver", "")
+      const activeChannels = parsed.route.routes
+        .filter((c: any) => c.receiver !== "self-healing-webhook")
+        ?.map((c: any) => c.receiver.replace("-receiver", ""));
+      const receivers = parsed.receivers.filter(
+        (c: any) => c.name !== "blackhole" && c.name !== "self-healing-webhook"
       );
-      const receiver = parsed.receivers.slice(0, -1);
 
       const mapSendTo = {
         email: "to",
@@ -144,9 +154,9 @@ class AlertmanagerService {
       };
 
       const result = Object.entries(mapSendTo)
-        .filter(([type]) => receiver.find((r: any) => r[`${type}_configs`]))
+        .filter(([type]) => receivers.find((r: any) => r[`${type}_configs`]))
         .map(([type, key]) => {
-          const config = receiver.find((r: any) => r[`${type}_configs`])[
+          const config = receivers.find((r: any) => r[`${type}_configs`])[
             `${type}_configs`
           ][0];
           const isActive = activeChannels?.includes(type) ?? false;
@@ -177,6 +187,7 @@ class AlertmanagerService {
       );
       const slackChannel = this.cleanEnv(process.env.SLACK_CONFIG_CHANNEL!);
       const slackApiUrl = process.env.SLACK_CONFIG_API_URL!;
+      const selfhealingWebhookUrl = process.env.SELFHEALING_WEBHOOK_CONFIG_URL!;
 
       const alertManagerConfig: AlertmanagerConfig = {
         global: { resolve_timeout: "5m" },
@@ -186,7 +197,15 @@ class AlertmanagerService {
           group_interval: "1m",
           repeat_interval: "5m",
           receiver: "blackhole", // Mặc định về hố đen
-          routes: [], // Mảng này sẽ được fill động dựa vào request
+          routes: [
+            {
+              match: {
+                target: "self_healing",
+              },
+              receiver: "self-healing-webhook",
+              continue: false,
+            },
+          ],
         },
         inhibit_rules: [
           {
@@ -230,6 +249,15 @@ class AlertmanagerService {
                 text: "{{ .CommonAnnotations.description }}",
                 username: "Elasticsearch Monitor",
                 icon_emoji: ":warning:",
+              },
+            ],
+          },
+          {
+            name: "self-healing-webhook",
+            webhook_configs: [
+              {
+                url: selfhealingWebhookUrl,
+                send_resolved: true,
               },
             ],
           },
