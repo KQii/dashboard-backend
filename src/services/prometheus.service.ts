@@ -174,7 +174,7 @@ class PrometheusService {
           node.values.map(([timestamp, memory]: any) => ({
             timestamp: new Date(timestamp * 1000).toISOString(),
             nodeName: node.metric.name,
-            heapUsed: (parseFloat(memory) / 1024).toFixed(2),
+            heapUsed: (parseFloat(memory) / 1024 / 1024).toFixed(1),
           }))
       );
 
@@ -183,7 +183,7 @@ class PrometheusService {
           node.values.map(([timestamp, memory]: any) => ({
             timestamp: new Date(timestamp * 1000).toISOString(),
             nodeName: node.metric.name,
-            heapMax: (parseFloat(memory) / 1024).toFixed(2),
+            heapMax: (parseFloat(memory) / 1024 / 1024).toFixed(1),
           }))
       );
 
