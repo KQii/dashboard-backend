@@ -142,10 +142,17 @@ class AlertmanagerService {
       const parsed: any = yaml.load(response.data?.config.original);
 
       const activeChannels = parsed.route.routes
-        .filter((c: any) => c.receiver !== "self-healing-webhook")
+        .filter(
+          (c: any) =>
+            c.receiver !== "self-healing-webhook" &&
+            c.receiver !== "alert-webhook"
+        )
         ?.map((c: any) => c.receiver.replace("-receiver", ""));
       const receivers = parsed.receivers.filter(
-        (c: any) => c.name !== "blackhole" && c.name !== "self-healing-webhook"
+        (c: any) =>
+          c.name !== "blackhole" &&
+          c.name !== "self-healing-webhook" &&
+          c.name !== "alert-webhook"
       );
 
       const mapSendTo = {
@@ -203,7 +210,7 @@ class AlertmanagerService {
                 target: "self_healing",
               },
               receiver: "self-healing-webhook",
-              continue: false,
+              continue: true,
             },
           ],
         },
@@ -232,9 +239,9 @@ class AlertmanagerService {
                 send_resolved: true,
                 headers: {
                   subject:
-                    "Elasticsearch Alert: {{ .CommonAnnotations.summary }}",
+                    '{{ if eq .Status "firing" }}\n🚨 Elasticsearch Alert: {{ .CommonAnnotations.summary }}\n{{ else }}\n✅ RESOLVED: {{ .CommonAnnotations.summary }}\n{{ end }}',
                 },
-                html: "<b>Elasticsearch Alert</b>: {{ .CommonAnnotations.summary }}<br>{{ .CommonAnnotations.description }}",
+                html: '{{ if eq .Status "firing" }}\n<b style="color:red;">🚨 Elasticsearch Alert</b><br>\n<b>Summary:</b> {{ .CommonAnnotations.summary }}<br>\n<b>Description:</b> {{ .CommonAnnotations.description }}<br>\n<b>Started at:</b> {{ range .Alerts.Firing }}{{ .StartsAt }}{{ end }}\n{{ else }}\n<b style="color:green;">✅ Alert Resolved</b><br>\n<b>Summary:</b> {{ .CommonAnnotations.summary }}<br>\n<b>Resolved at:</b> {{ range .Alerts.Resolved }}{{ .EndsAt }}{{ end }}<br>\nSự cố đã được khắc phục và hệ thống trở về trạng thái bình thường.\n{{ end }}',
               },
             ],
           },
@@ -245,8 +252,11 @@ class AlertmanagerService {
                 api_url: slackApiUrl,
                 channel: slackChannel,
                 send_resolved: true,
-                title: "{{ .CommonAnnotations.summary }}",
-                text: "{{ .CommonAnnotations.description }}",
+                color:
+                  '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}',
+                title:
+                  '{{ if eq .Status "firing" }}\n🚨 Elasticsearch Alert: {{ .CommonAnnotations.summary }}\n{{ else }}\n✅ RESOLVED: {{ .CommonAnnotations.summary }}\n{{ end }}',
+                text: '{{ if eq .Status "firing" -}}\n*🚨 Elasticsearch Alert*\n*Summary:* {{ .CommonAnnotations.summary }}\n*Description:* {{ .CommonAnnotations.description }}\n*Started at:* {{ range .Alerts.Firing }}{{ .StartsAt }}{{ end }}\n{{- else -}}\n*✅ Alert Resolved*\n*Summary:* {{ .CommonAnnotations.summary }}\n*Resolved at:* {{ range .Alerts.Resolved }}{{ .EndsAt }}{{ end }}\nSự cố đã được khắc phục và hệ thống trở về trạng thái bình thường.\n{{- end }}',
                 username: "Elasticsearch Monitor",
                 icon_emoji: ":warning:",
               },
